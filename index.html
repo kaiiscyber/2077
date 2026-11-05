@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>warning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; }
+  html { overflow-x: hidden; }
+  body { background: #f6f6f7; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 600; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #111; display: flex; flex-direction: column; }
+  header { background: #fff; height: 53px; padding: 0 24px; display: flex; align-items: center; border-bottom: 1px solid #ececec; flex: none; }
+  .logo { font-size: 21px; font-weight: 800; color: #000; letter-spacing: -0.6px; }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 5vh 8vw 40px; }
+  .hidden { display: none !important; }
+
+  /* ================= MÀN HÌNH XEM MEDIA ================= */
+  /* Nền doodle (hình vẽ tay) ở phía dưới, ngay chỗ nút */
+  #viewer::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 280px; z-index: 0; pointer-events: none; opacity: .32;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><g stroke='%23ffb020'><path d='M36 24L40.5 34.5L52 36L43.5 43.5L46 55L36 49L26 55L28.5 43.5L20 36L31.5 34.5Z' transform='rotate(-8 36 40)'/></g><g stroke='%23ff6b8b'><path d='M120 52C99 38 100 22 112 22C117 22 120 26 120 30C120 26 124 22 129 22C141 22 141 38 120 52Z' transform='rotate(8 120 36)'/></g><g stroke='%236c8cff'><path d='M178 57C167 57 167 42 178 42C178 30 196 28 200 40C213 38 215 57 202 57Z'/></g><g stroke='%23b78cff'><path d='M80 75Q82 88 94 90Q82 92 80 105Q78 92 66 90Q78 88 80 75Z'/></g><g stroke='%234cc9a0'><circle cx='200' cy='106' r='13'/><path d='M194 103v2M206 103v2'/><path d='M193.5 109Q200 116 206.5 109'/></g><g stroke='%23ff6b8b'><path d='M14 152q8 -13 16 0t16 0t16 0t16 0'/></g><g stroke='%236c8cff' transform='rotate(-7 129 109)'><rect x='112' y='96' width='34' height='26' rx='6'/><circle cx='129' cy='109' r='7'/><path d='M120 96l3 -5h12l3 5'/></g><g stroke='%23ffb020'><path d='M171 126L158 147H168L162 165L179 140H167Z'/></g><g stroke='%234cc9a0'><circle cx='40' cy='200' r='14'/><path d='M36 193L48 200L36 207Z'/></g><g stroke='%23b78cff'><path d='M104 213V185L124 179V207'/><ellipse cx='99' cy='213' rx='6' ry='4.5'/><ellipse cx='119' cy='207' rx='6' ry='4.5'/></g><g stroke='%23ff6b8b'><circle cx='190' cy='190' r='4'/><circle cx='190' cy='180' r='6'/><circle cx='199.5' cy='187' r='6'/><circle cx='196' cy='198' r='6'/><circle cx='184' cy='198' r='6'/><circle cx='180.5' cy='187' r='6'/></g><g stroke='%238a8a96'><path d='M76 36v10M71 41h10'/><path d='M228 74v8M224 78h8'/><path d='M150 148v8M146 152h8' transform='translate(-10 40)'/><circle cx='158' cy='78' r='3.5'/><circle cx='222' cy='150' r='3'/><circle cx='20' cy='236' r='3'/><circle cx='150' cy='232' r='3'/><path d='M62 120q6 -8 12 0' /></g><g fill='%23ffb020' stroke='none'><circle cx='148' cy='62' r='1.8'/><circle cx='60' cy='176' r='1.8'/><circle cx='224' cy='230' r='1.8'/><circle cx='88' cy='128' r='1.8'/><circle cx='14' cy='88' r='1.8'/></g></svg>"); background-size: 240px 240px;
+    -webkit-mask-image: linear-gradient(to top, #000 25%, transparent); mask-image: linear-gradient(to top, #000 25%, transparent); }
+  .frame { width: 100%; max-width: 900px; text-align: center; position: relative; z-index: 1; }
+  #viewer { position: relative; overflow-x: clip; }
+  /* Ambient light kiểu YouTube: canvas nhỏ nằm ngay sau khung, phóng to nhẹ + blur sâu + tăng bão hòa */
+  #ambient { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; border-radius: 14px; opacity: 0; transform: scale(1.2); filter: blur(36px) saturate(1.9) brightness(1.05); transition: opacity .35s ease; will-change: opacity; }
+  #ambient.on { opacity: .8; }
+  .imgbox { position: relative; z-index: 1; display: inline-block; max-width: 100%; border-radius: 5px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.08); line-height: 0; }
+  #pic { object-fit: contain; opacity: 0; filter: blur(24px); transform: scale(1.04); transition: opacity .5s ease, filter 1.6s ease, transform 1.6s ease; display: block; max-width: 100%; max-height: none; width: auto; height: auto; pointer-events: none; }
+  #pic.shown { opacity: 1; }
+  #pic.loaded { filter: blur(0); transform: scale(1); }
+  .imgbox { transition: box-shadow .6s ease; }
+  .tv-card { display: inline-block; position: relative; max-width: 100%; line-height: 0; }
+  .imgbox { background: transparent; }   /* không nền đen: tránh viền đen quanh ảnh lúc chờ vầng sáng */
+  .imgbox.live { width: var(--mw, auto); }
+  .imgbox.live #pic { width: 100%; height: var(--mh, auto); max-height: none; object-fit: cover; background: transparent; }
+  .imgbox.live { background: transparent; }   /* khung đã đúng tỉ lệ: cover + nền trong suốt để không lòi viền đen do làm tròn pixel */
+  @property --h { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  .imgbox { animation: hue 3s linear infinite; }
+  .imgbox.ready { animation: none; }
+  .imgbox::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .9s ease; background: linear-gradient(90deg, #ff2d55, #ff9500, #ffd60a, #30d158, #00c7ff, #5e5ce6, #bf5af2, #ff2d55); background-size: 200% 100%; animation: slide 1.4s linear infinite; }
+  .imgbox.loading::before { opacity: 1; }
+  .imgbox.loading { width: 220px; height: 4px; border-radius: 4px; box-shadow: 0 0 14px 2px rgba(0,160,255,.6); box-shadow: 0 0 14px 2px hsl(var(--h) 100% 55% / .65); }
+  @keyframes hue { to { --h: 360deg; } }
+  @keyframes slide { to { background-position: -200% 0; } }
+  .imgbox.sizing { transition: width .45s cubic-bezier(.4,0,.2,1), height .95s cubic-bezier(.22,.8,.25,1), box-shadow .6s ease; }
+  .caption { transition: opacity .7s ease; }
+  .tv-card:not(.done) ~ .caption { opacity: 0; pointer-events: none; }
+  /* Che mờ kiểu Telegram: ảnh mờ + hạt lấp lánh, chạm vào mới hiện */
+  .imgbox.spoiler #pic { filter: blur(13px) !important; transform: scale(1.08) !important; }
+  .imgbox.unveil #pic { transition: opacity .5s ease, filter .5s ease, transform .5s ease !important; }
+  .spoil { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; cursor: pointer; opacity: 0; background: rgba(0,0,0,.04); transition: opacity .5s ease; }
+  .spoil.on { opacity: 1; }
+  .shield { position: absolute; inset: 0; background: transparent; z-index: 2; }
+  .caption { margin-top: 10px; font-size: 12px; font-weight: 600; color: #8a8a8f; letter-spacing: -0.1px; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #111; color: #fff; padding: 10px 18px; border-radius: 3px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: .25s; z-index: 20; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0e0e10; color: #f2f2f3; }
+    header { background: #161618; border-bottom-color: #26262a; }
+    .logo { color: #fff; }
+    .caption { color: #9a9aa2; }
+    .imgbox { box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+    /* nền doodle: sáng và đậm hơn để nổi trên nền tối */
+    #viewer::before { opacity: .7; filter: brightness(1.35) saturate(1.15); }
+  }
+  @media print { body { display: none !important; } }
+</style>
+</head>
+<body>
+
+  <!-- ===== Màn hình xem ảnh / GIF ===== -->
+  <main id="viewer">
+    <div class="frame">
+      <div class="tv-card">
+        <canvas id="ambient" width="48" height="27"></canvas>
+        <div class="imgbox loading" id="box">
+          <div class="shield"></div>
+        </div>
+      </div>
+      <div class="caption" id="caption">kaiis</div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  var CDN = 'https://byvn.net/';   // mã m2VD -> https://byvn.net/m2VD
+  var GIF_RE = /\.gif(\?|#|$)/i;
+  var MEDIA_URL = '', gen = 0;
+  var box0 = $('box'), shield = box0.querySelector('.shield');
+  var viewer = $('viewer'), caption = $('caption');
+  var toast = $('toast'), tt;
+  var amb = $('ambient'), ambCtx = amb.getContext('2d');
+    // Ảnh mặc định khi không có mã
+  var DEFAULT_IMG = 'https://i.ibb.co/bMDXj06B/4057a3dc87f2cf8ebdda8086a3a7193e.jpg';
+
+
+  // ---- Ambient light (kiểu YouTube) ----
+  // Canvas siêu nhỏ (48px) vẽ lại ảnh/GIF ~25 lần/giây; mỗi lần chỉ trộn 22% frame mới lên frame cũ
+  // => màu đổi mượt, không giật. CSS blur sẽ biến các pixel này thành vầng sáng bao quanh khung ảnh.
+  var ambRAF = 0, ambLast = 0, ambGet = null;
+  function ambDraw(alpha) {
+    var s = ambGet && ambGet();
+    if (!s) return;
+    try { ambCtx.globalAlpha = alpha; ambCtx.drawImage(s, 0, 0, amb.width, amb.height); } catch (e) {}
+  }
+  function ambTick(t) {
+    ambRAF = requestAnimationFrame(ambTick);
+    if (document.hidden || t - ambLast < 40) return;
+    ambLast = t;
+    ambDraw(.22);
+  }
+  function ambientStart(getSrc, live, W, H) {
+    cancelAnimationFrame(ambRAF);
+    ambGet = getSrc;
+    // giữ đúng tỉ lệ khung để vầng sáng không bị méo
+    var bw = W || box0.offsetWidth || 16, bh = H || box0.offsetHeight || 9;
+    amb.width = 48; amb.height = Math.max(8, Math.min(96, Math.round(48 * bh / bw)));
+    ambDraw(1);
+    amb.classList.add('on');
+    if (live) {
+      ambLast = 0; ambRAF = requestAnimationFrame(ambTick);
+    }
+  }
+  function ambientStop() { cancelAnimationFrame(ambRAF); ambGet = null; amb.classList.remove('on'); }
+
+  // ---- Đưa khung xem về trạng thái ban đầu (dùng mỗi lần nhập mã mới) ----
+  function resetViewer() {
+    gen++;
+    ambientStop();
+    box0.parentNode.classList.remove('on', 'done', 'spoiled');
+    box0.className = 'imgbox loading';
+    box0.removeAttribute('style');
+    box0.innerHTML = '<div class="shield"></div>';
+    shield = box0.querySelector('.shield');
+    caption.textContent = 'Made by kaiis';
+  }
+
+  // ---- Che mờ kiểu Telegram: hạt lấp lánh trên ảnh mờ, chạm để hiện ----
+  function unveil(c) {
+    if (!box0.classList.contains('spoiler')) return;
+    box0.classList.add('unveil'); box0.classList.remove('spoiler');
+    box0.parentNode.classList.remove('spoiled');
+    c.classList.remove('on');
+    setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 550);
+  }
+  function makeSpoiler(w, h, my) {
+    var c = document.createElement('canvas'); c.className = 'spoil'; c.width = w; c.height = h;
+    box0.appendChild(c);
+    var ctx = c.getContext('2d'), n = Math.min(1000, Math.round(w * h / 100)), P = [], last = 0;
+    for (var i = 0; i < n; i++) P.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .7, vy: (Math.random() - .5) * .7,
+      a: Math.random(), da: (.02 + Math.random() * .05) * (Math.random() < .5 ? -1 : 1), r: 1 + Math.random() * 1.2 });
+    (function loop(t) {
+      if (!c.parentNode || my !== gen) return;
+      requestAnimationFrame(loop);
+      if (t - last < 33) return; last = t;
+      ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#fff';
+      for (var i = 0; i < P.length; i++) {
+        var p = P[i];
+        p.x += p.vx; p.y += p.vy; p.a += p.da;
+        if (p.a >= 1) { p.a = 1; p.da = -p.da; }
+        else if (p.a <= 0) { p.a = 0; p.da = Math.abs(p.da); p.x = Math.random() * w; p.y = Math.random() * h; }
+        ctx.globalAlpha = p.a * .9; ctx.fillRect(p.x, p.y, p.r, p.r);
+      }
+    })(0);
+    c.addEventListener('click', function () { unveil(c); });
+    setTimeout(function () { c.classList.add('on'); }, 50);
+  }
+
+  function start() {
+    var pic, my = ++gen, revealed = false, tmo;
+    var failed = function () { if (my !== gen) return; clearTimeout(tmo); notFound(); };
+    var isGif = GIF_RE.test(MEDIA_URL);
+    if (isGif) {
+      pic = document.createElement('canvas');
+      pic.id = 'pic';
+      box0.insertBefore(pic, shield);
+    } else {
+      pic = document.createElement('img');
+      pic.id = 'pic'; pic.alt = ''; pic.draggable = false; pic.src = MEDIA_URL;
+      box0.insertBefore(pic, shield);
+    }
+
+    function finish() {
+      if (my !== gen) return;
+      box0.classList.remove('loading', 'sizing');
+      box0.classList.add('live');
+      ambientStart(function () { return pic; }, isGif);
+      box0.style.width = box0.style.height = '';
+      pic.style.width = pic.style.height = '';
+      if (isGif && pic.tagName === 'CANVAS') {
+        var real = new Image(), old = pic;
+        real.alt = ''; real.draggable = false; real.className = old.className;
+        real.onload = function () {
+          (real.decode ? real.decode() : Promise.resolve()).then(function () {
+            real.id = 'pic'; old.removeAttribute('id');
+            if (old.parentNode) { box0.insertBefore(real, old); box0.removeChild(old); pic = real; }
+          }, function () {});
+        };
+        real.src = MEDIA_URL;
+      }
+    }
+    function reveal() {
+      if (revealed || my !== gen) return; revealed = true; clearTimeout(tmo);
+      var nw = pic.naturalWidth, nh = pic.naturalHeight;
+      if (!nw || !nh) { pic.classList.add('shown', 'loaded'); box0.classList.add('ready'); box0.parentNode.classList.add('on', 'done'); return finish(); }
+      var fw = box0.closest('.frame').clientWidth || window.innerWidth;
+      var W = Math.min(fw, 460), capH = window.innerHeight * 0.6;
+      // Khung thu nhỏ theo chiều cao màn hình để luôn thấy nút 
+      var w = Math.max(Math.min(264, W), Math.min(W, Math.round(capH * nw / nh)));
+      var h = Math.round(w * nh / nw);                              // đúng tỉ lệ gốc, không viền đen
+      box0.style.setProperty('--mw', w + 'px'); box0.style.setProperty('--mh', h + 'px');
+      pic.style.width = w + 'px'; pic.style.height = h + 'px';
+      box0.classList.add('spoiler'); box0.parentNode.classList.add('spoiled'); makeSpoiler(w, h, my);
+      ambientStart(function () { return pic; }, false, w, h);   // bật vầng sáng ngay lập tức
+      box0.style.width = '220px'; box0.style.height = '4px';
+      box0.classList.add('sizing');
+      void box0.offsetWidth;
+      box0.style.width = w + 'px';
+      setTimeout(function () {
+        if (my !== gen) return;
+        box0.classList.remove('loading');
+        box0.parentNode.classList.add('on');
+        pic.classList.add('shown');
+        box0.style.height = h + 'px';
+        setTimeout(function () {
+          if (my !== gen) return;
+          box0.classList.add('ready');
+          box0.parentNode.classList.add('done');
+          pic.classList.add('loaded');
+          setTimeout(finish, 1700);
+        }, 950);
+      }, 450);
+    }
+    if (isGif) {
+      var ld = new Image();
+      ld.onload = function () {
+        pic.width = ld.naturalWidth; pic.height = ld.naturalHeight;
+        pic.getContext('2d').drawImage(ld, 0, 0);
+        pic.naturalWidth = ld.naturalWidth; pic.naturalHeight = ld.naturalHeight;
+        reveal();
+      };
+      ld.onerror = failed;
+      ld.src = MEDIA_URL;
+    } else {
+      var done = function () { if (pic.decode) pic.decode().then(reveal, reveal); else reveal(); };
+      if (pic.complete && pic.naturalWidth) done();
+      else { pic.addEventListener('load', done); pic.addEventListener('error', failed); }
+    }
+    tmo = setTimeout(function () { if (!revealed) failed(); }, 20000);
+  }
+
+  function notFound() {
+    box0.style.transition = 'opacity .35s ease';
+    box0.style.opacity = '0';
+    setTimeout(function () {
+      showToast('Không tìm thấy ảnh');
+      if (MEDIA_URL !== DEFAULT_IMG) load(DEFAULT_IMG);   // sai mã -> hiện ảnh mặc định
+    }, 400);
+  }
+
+  // ---- Nhận mã / link rồi tải media ----
+  // Chấp nhận: "m2VD" | "https://byvn.net/m2VD" | link ảnh/GIF đầy đủ | "thư-mục/tên.đuôi" (supaimg)
+  function load(raw) {
+    raw = (raw || '').trim();
+    if (!raw) return;
+    resetViewer();
+
+    // Link đầy đủ
+    if (/^https?:\/\//i.test(raw)) {
+      var u;
+      try { u = new URL(raw); } catch (e) { return notFound(); }
+      var last = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+      if (/(^|\.)byvn\.net$/i.test(u.hostname) && /^[A-Za-z0-9_-]+$/.test(last)) {
+        return load(last);
+      }
+      MEDIA_URL = raw;
+            return start();
+    }
+    raw = raw.replace(/^\/+|\/+$/g, '');
+
+    // Dạng 'thư-mục/tên-file.đuôi' -> supaimg
+    if (/^[A-Za-z0-9-]+\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(raw)) {
+      MEDIA_URL = 'https://i.supaimg.com/' + raw;
+            return start();
+    }
+
+    if (!/^[A-Za-z0-9_-]+$/.test(raw) || /^index(\.html)?$/i.test(raw)) return notFound();
+
+    // Chỉ có mã -> https://byvn.net/<mã>
+    MEDIA_URL = CDN + raw;
+    start();
+  }
+
+  // ---- Link vẫn dùng được: ?src= , ?id= , /thư-mục/tên.đuôi , /mã. Không có mã -> ảnh mặc định ----
+  (function initial() {
+    var qs = new URLSearchParams(location.search);
+    var src = qs.get('src'), id = qs.get('id');
+    if (src) return load(src);
+    if (id) return load(id);
+    if (location.protocol !== 'file:') {
+      var parts = decodeURIComponent(location.pathname).split('/').filter(Boolean);
+      // GitHub Pages dạng user.github.io/<tên-repo>/ : bỏ tên repo, nó không phải mã ảnh
+      if (/\.github\.io$/i.test(location.hostname)) parts.shift();
+      var path = parts.join('/');
+      if (path && !/^index(\.html)?$/i.test(path)) return load(path);
+    }
+    load(DEFAULT_IMG);
+  })();
+
+  // ---- Toast ----
+  function showToast(msg) {
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+  }
+
+  // ---- Chống sao chép ảnh ----
+  var isField = function (e) { return e.target && e.target.tagName === 'INPUT'; };
+  var block = function (e) { if (isField(e)) return; e.preventDefault(); return false; };
+  ['contextmenu', 'dragstart', 'selectstart', 'copy', 'cut'].forEach(function (ev) {
+    document.addEventListener(ev, block);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (isField(e)) return;
+    var k = (e.key || '').toLowerCase(), c = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' || e.key === 'PrintScreen' ||
+        (c && ['s', 'u', 'p', 'c', 'a'].indexOf(k) > -1) ||
+        (c && e.shiftKey && ['i', 'j', 'c', 's'].indexOf(k) > -1)) {
+      e.preventDefault();
+      if (e.key === 'PrintScreen' && navigator.clipboard) navigator.clipboard.writeText('');
+      return false;
+    }
+  });
+  function hide() { box0.style.filter = 'blur(28px)'; }
+  function show() { box0.style.filter = ''; }
+  document.addEventListener('visibilitychange', function () { document.hidden ? hide() : show(); });
+  window.addEventListener('blur', hide);
+  window.addEventListener('focus', show);
+})();
+</script>
+</body>
+</html>

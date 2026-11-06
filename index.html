@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>warning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; }
+  html { overflow-x: hidden; }
+  body { background: #f6f6f7; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 600; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #111; display: flex; flex-direction: column; }
+  header { background: #fff; height: 53px; padding: 0 24px; display: flex; align-items: center; border-bottom: 1px solid #ececec; flex: none; }
+  .logo { font-size: 21px; font-weight: 800; color: #000; letter-spacing: -0.6px; }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 5vh 8vw 24px; }
+  .hidden { display: none !important; }
+
+  /* ================= MÀN HÌNH XEM MEDIA ================= */
+  .frame { width: 100%; max-width: 900px; text-align: center; position: relative; z-index: 1; }
+  #viewer { position: relative; overflow-x: clip; }
+  .imgbox { position: relative; z-index: 1; display: inline-block; max-width: 100%; border-radius: 5px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.08); line-height: 0; }
+  #pic { object-fit: contain; opacity: 0; filter: blur(24px); transform: scale(1.04); transition: opacity .5s ease, filter 1.6s ease, transform 1.6s ease; display: block; max-width: 100%; max-height: none; width: auto; height: auto; pointer-events: none; }
+  #pic.shown { opacity: 1; }
+  #pic.loaded { filter: blur(0); transform: scale(1); }
+  .imgbox { transition: box-shadow .6s ease; }
+  .tv-card { display: inline-block; position: relative; max-width: 100%; line-height: 0; }
+  .imgbox { background: transparent; }   /* không nền đen: tránh viền đen quanh ảnh lúc chờ vầng sáng */
+  .imgbox.live { width: var(--mw, auto); }
+  .imgbox.live #pic { width: 100%; height: var(--mh, auto); max-height: none; object-fit: cover; background: transparent; }
+  .imgbox.live { background: transparent; }   /* khung đã đúng tỉ lệ: cover + nền trong suốt để không lòi viền đen do làm tròn pixel */
+  @property --h { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  .imgbox { animation: hue 3s linear infinite; }
+  .imgbox.ready { animation: none; }
+  .imgbox::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .9s ease; background: linear-gradient(90deg, #ff2d55, #ff9500, #ffd60a, #30d158, #00c7ff, #5e5ce6, #bf5af2, #ff2d55); background-size: 200% 100%; animation: slide 1.4s linear infinite; }
+  .imgbox.loading::before { opacity: 1; }
+  .imgbox.loading { width: 220px; height: 4px; border-radius: 4px; box-shadow: 0 0 14px 2px rgba(0,160,255,.6); box-shadow: 0 0 14px 2px hsl(var(--h) 100% 55% / .65); }
+  @keyframes hue { to { --h: 360deg; } }
+  @keyframes slide { to { background-position: -200% 0; } }
+  .imgbox.sizing { transition: width .45s cubic-bezier(.4,0,.2,1), height .95s cubic-bezier(.22,.8,.25,1), box-shadow .6s ease; }
+  .caption { transition: opacity .7s ease; }
+  /* Che mờ kiểu Telegram: ảnh mờ + hạt lấp lánh, chạm vào mới hiện */
+  .imgbox.spoiler #pic { filter: blur(6px) !important; transform: scale(1.04) !important; }
+  .imgbox.unveil #pic { transition: opacity .5s ease, filter .5s ease, transform .5s ease !important; }
+  .spoil { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; cursor: pointer; opacity: 0; background: transparent; transition: opacity .5s ease; }
+  .spoil.on { opacity: 1; }
+  .shield { position: absolute; inset: 0; background: transparent; z-index: 2; }
+  /* Hàng dưới ảnh: [2 nút MXH] — kaiis — [viên thuốc cảm xúc] */
+  .row { position: absolute; left: 50%; transform: translateX(-50%); width: max(100%, 290px); top: 100%; margin-top: 12px; z-index: 6; display: block; line-height: 1; transition: opacity .7s ease; }
+  .rowtop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tv-card.hasmeta { margin-bottom: 48px; }
+  .meta { margin-top: 10px; text-align: left; display: flex; flex-direction: column; gap: 5px; }
+  .meta .mt { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .md { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #8a8a8f; line-height: 1.2; }
+  .meta .md svg { flex: none; width: 13px; height: 13px; display: block; }
+  .foot { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 6px 24px calc(24px + env(safe-area-inset-bottom)); text-align: right; }
+  .foot .mail { font-size: 12px; font-weight: 600; color: #8a8a8f; letter-spacing: -0.1px; text-decoration: none; }
+  .foot .gh { position: relative; margin-top: 14px; width: auto; padding: 0 22px; gap: 10px; height: 42px; border-radius: 10px; background: #000; color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; box-shadow: 0 2px 10px rgba(0,0,0,.14); transition: transform .2s ease; }
+  .foot .gh:active { transform: scale(.97); }
+  .foot .gh svg { flex: none; width: 21px; height: 21px; display: block; }
+  .tv-card:not(.done) .row { opacity: 0; pointer-events: none; }
+  .react { display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.14); line-height: 1; }
+  .react button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; font-size: 17px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform .25s cubic-bezier(.3,1.6,.5,1), background .2s ease; }
+  .react button:hover { transform: scale(1.18); }
+  .react button:active { transform: scale(.9); }
+  .react button.on { background: rgba(0,0,0,.07); transform: scale(1.12); }
+  .float-emo { position: absolute; bottom: 4px; z-index: 7; font-size: 20px; line-height: 1; pointer-events: none; animation: floatUp 1s ease-out forwards; }
+  @keyframes floatUp { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 0), -90px) scale(1.25); } }
+  .caption { font-size: 12px; font-weight: 600; color: #8a8a8f; letter-spacing: -0.1px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  /* 2 nút mạng xã hội tròn (không viên thuốc) */
+  .soc { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; }
+  .soc a { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,.16); transition: transform .2s ease; }
+  .soc a:active { transform: scale(.92); }
+  .soc svg { width: 18px; height: 18px; display: block; }
+  .soc .th { background: #000; color: #fff; }
+  .soc .ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); color: #fff; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #111; color: #fff; padding: 10px 18px; border-radius: 3px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: .25s; z-index: 20; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0e0e10; color: #f2f2f3; }
+    header { background: #161618; border-bottom-color: #26262a; }
+    .logo { color: #fff; }
+    .caption, .foot .mail, .meta .md { color: #9a9aa2; }
+    .foot .gh { box-shadow: 0 0 0 1px #2e2e33; }
+    .imgbox { box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+    .react { background: #26262a; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+    .react button.on { background: rgba(255,255,255,.12); }
+    .soc .th { background: #fff; color: #000; }
+  }
+  @media print { body { display: none !important; } }
+</style>
+</head>
+<body>
+
+  <!-- ===== Màn hình xem ảnh / GIF ===== -->
+  <main id="viewer">
+    <div class="frame">
+      <div class="tv-card">
+        <div class="imgbox loading" id="box">
+          <div class="shield"></div>
+        </div>
+        <div class="row">
+          <div class="rowtop">
+          <div class="soc">
+            <a class="th" href="https://www.threads.com/@kaiis.w" target="_blank" rel="noopener noreferrer" aria-label="Threads @kaiis.w">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.85 1.81-4.094 2.628-7.277 2.65Zm1.003-11.69c-.242 0-.487.007-.739.021-1.836.103-2.98.946-2.916 2.143.067 1.256 1.452 1.839 2.784 1.767 1.224-.065 2.818-.543 3.086-3.71a10.5 10.5 0 0 0-2.215-.221z"/></svg>
+      </a>
+            <a class="ig" href="https://www.instagram.com/kaiis.w?cplk=bDk2c3J1NzUxNGdv" target="_blank" rel="noopener noreferrer" aria-label="Instagram kaiis.w">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+      </a>
+          </div>
+          <div class="react" id="react" role="group" aria-label="Cảm xúc">
+            <button type="button" data-e="😝" aria-label="Tinh nghịch">😝</button>
+            <button type="button" data-e="😍" aria-label="Yêu thích">😍</button>
+            <button type="button" data-e="☠️" aria-label="Chết cười">☠️</button>
+            <button type="button" data-e="🔥" aria-label="Cháy">🔥</button>
+            <button type="button" data-e="💯" aria-label="Điểm tuyệt đối">💯</button>
+            <button type="button" data-e="🫪" aria-label="Méo mặt">🫪</button>
+          </div>
+          </div>
+          <div class="meta hidden" id="meta">
+            <div class="mt" id="metaTitle"></div>
+            <div class="md" id="metaDate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span id="metaDateTx"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="caption" id="caption">kaiis</div>
+    <a class="mail" href="mailto:vtuong2104@proton.me">vtuong2104@proton.me</a>
+    <a class="gh" href="https://github.com/kaiiscyber" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+      <span>Follow me on Github</span>
+    </a>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  var CDN = 'https://byvn.net/';   // mã m2VD -> https://byvn.net/m2VD
+  var GIF_RE = /\.gif(\?|#|$)/i;
+  var MEDIA_URL = '', gen = 0;
+  var box0 = $('box'), shield = box0.querySelector('.shield');
+  var viewer = $('viewer'), caption = $('caption');
+  var toast = $('toast'), tt;
+    // Ảnh mặc định khi không có mã
+  var DEFAULT_IMG = 'https://i.ibb.co/bMDXj06B/4057a3dc87f2cf8ebdda8086a3a7193e.jpg';
+
+  // ---- ImgBB: dán link trang (ibb.co/xxxx) -> tự lấy link ảnh gốc + tiêu đề + ngày đăng ----
+  var capTok = 0;
+  function getText(url, ms) {
+    return new Promise(function (res, rej) {
+      var c = new AbortController();
+      var t = setTimeout(function () { c.abort(); rej(new Error('timeout')); }, ms);
+      fetch(url, { signal: c.signal }).then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.text();
+      }).then(function (x) { clearTimeout(t); res(x); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  }
+  // Ảnh mới -> chỉ hiện mốc thời gian; ảnh cũ -> kèm ngày tháng
+  function fmtWhen(dt, exact) {
+    var diff = Math.max(0, Date.now() - dt.getTime()), m = Math.floor(diff / 6e4), h = Math.floor(diff / 36e5), d = Math.floor(diff / 864e5);
+    var day = dt.toLocaleDateString('vi-VN');
+    var hm = exact ? dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+    if (m < 1) return 'Vừa đăng';
+    if (m < 60) return m + ' phút trước';
+    if (h < 24) return h + ' giờ trước' + (hm ? ' · ' + hm : '');
+    if (d < 7) return d + ' ngày trước · ' + day + (hm ? ' ' + hm : '');
+    return day + (hm ? ' · ' + hm : '');
+  }
+  function parseIbb(html) {
+    var d = new DOMParser().parseFromString(html, 'text/html');
+    var attr = function (sel, a) { var e = d.querySelector(sel); return e ? (e.getAttribute(a) || '') : ''; };
+    var img = attr('meta[property="og:image"]', 'content') || attr('link[rel="image_src"]', 'href');
+    var title = attr('meta[property="og:title"]', 'content') || (d.title || '');
+    title = title.replace(/\s*(hosted at|-)\s*ImgBB.*$/i, '').trim();
+    var jl = html.match(/"uploadDate"\s*:\s*"([^"]+)"/);
+    var at = html.match(/(?:title|data-time|datetime)="(\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d)"/);
+    var raw = attr('meta[property="article:published_time"]', 'content') || attr('abbr[title]', 'title') ||
+              attr('time[datetime]', 'datetime') || (jl ? jl[1] : '') || (at ? at[1] : '');
+    var date = '';
+    if (raw) {      // có mốc giờ chính xác
+      var iso = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(raw) ? raw.replace(' ', 'T') + 'Z' : raw;   // imgbb ghi giờ UTC
+      var dt = new Date(iso);
+      if (!isNaN(dt)) date = fmtWhen(dt, true);
+    }
+    if (!date) {    // dự phòng: trang chỉ ghi "Uploaded 3 days ago" -> quy ra thời điểm gần đúng
+      var rel = ((d.body && d.body.textContent) || '').match(/(\d+|an?)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i) ||
+                html.match(/(\d+|an?)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
+      if (rel) {
+        var n = /^an?$/i.test(rel[1]) ? 1 : +rel[1];
+        var ms = { second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, year: 31536e6 }[rel[2].toLowerCase()];
+        date = fmtWhen(new Date(Date.now() - n * ms), false);
+      } else if (/just now/i.test(html)) date = 'Vừa đăng';
+    }
+    return { img: img.replace(/^http:/i, 'https:'), title: title, date: date };
+  }
+  // Proxy riêng (Cloudflare Worker) -> ổn định nhất. Dán URL Worker vào đây, vd 'https://ibb.ten-ban.workers.dev/'
+  var IBB_PROXY = 'https://damp-haze-ac20.vtuong2104.workers.dev/';
+  // Không có Worker thì thử lần lượt: lấy thẳng -> các proxy công cộng (hay sập/đổi luật, chỉ để dự phòng)
+  function fetchIbb(id) {
+    var page = 'https://ibb.co/' + id, enc = encodeURIComponent(page), tries = [];
+    if (IBB_PROXY) tries.push(IBB_PROXY + (IBB_PROXY.indexOf('?') > -1 ? '&' : '?') + 'id=' + id);
+    tries.push(page,
+      'https://api.allorigins.win/raw?url=' + enc,
+      'https://api.codetabs.com/v1/proxy/?quest=' + enc,
+      'https://corsproxy.io/?url=' + enc,
+      'https://thingproxy.freeboard.io/fetch/' + page);
+    return tries.reduce(function (p, u) {
+      return p.catch(function () {
+        return getText(u, 7000).then(function (h) {
+          var m = parseIbb(h);
+          if (!m.img && !m.title) throw new Error('empty');
+          return m;
+        });
+      });
+    }, Promise.reject());
+  }
+  function setCaption(m) {
+    var meta = $('meta');
+    $('metaTitle').textContent = m.title || '';
+    $('metaTitle').classList.toggle('hidden', !m.title);
+    $('metaDateTx').textContent = m.date || '';
+    $('metaDate').classList.toggle('hidden', !m.date);
+    var any = !!(m.title || m.date);
+    meta.classList.toggle('hidden', !any);
+    meta.parentNode.parentNode.classList.toggle('hasmeta', any);
+  }
+  function loadIbbPage(id) {          // đã resetViewer() trước đó, khung đang chạy vạch loading
+    var tok = capTok;
+    fetchIbb(id).then(function (m) {
+      if (tok !== capTok) return;
+      if (!m.img) throw new Error('no img');
+      MEDIA_URL = m.img; setCaption(m); start();
+    }).catch(function () { if (tok === capTok) notFound(); });
+  }
+  function loadIbbMeta(id) {          // link i.ibb.co trực tiếp: ảnh hiện ngay, tiêu đề/ngày đến sau
+    var tok = capTok;
+    fetchIbb(id).then(function (m) { if (tok === capTok) setCaption(m); }, function () {});
+  }
+
+
+  function ambientStart() {}
+  function ambientStop() {}
+
+  function updateDoodle() {}
+
+  // ---- Đưa khung xem về trạng thái ban đầu (dùng mỗi lần nhập mã mới) ----
+  function resetViewer() {
+    gen++; capTok++;
+    setCaption({});
+    ambientStop();
+    box0.parentNode.classList.remove('on', 'done', 'spoiled');
+    box0.className = 'imgbox loading';
+    box0.removeAttribute('style');
+    box0.innerHTML = '<div class="shield"></div>';
+    shield = box0.querySelector('.shield');
+    var onBtns = document.querySelectorAll('.react button.on');
+    for (var i = 0; i < onBtns.length; i++) onBtns[i].classList.remove('on');
+  }
+
+  // ---- Che mờ kiểu Telegram: hạt lấp lánh trên ảnh mờ, chạm để hiện ----
+  function unveil(c) {
+    if (!box0.classList.contains('spoiler')) return;
+    box0.classList.add('unveil'); box0.classList.remove('spoiler');
+    box0.parentNode.classList.remove('spoiled');
+    c.classList.remove('on');
+    setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 550);
+  }
+  function makeSpoiler(w, h, my) {
+    var c = document.createElement('canvas'); c.className = 'spoil'; c.width = w; c.height = h;
+    box0.appendChild(c);
+    var ctx = c.getContext('2d'), n = Math.min(450, Math.round(w * h / 250)), P = [], last = 0;
+    for (var i = 0; i < n; i++) P.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .7, vy: (Math.random() - .5) * .7,
+      a: Math.random(), da: (.02 + Math.random() * .05) * (Math.random() < .5 ? -1 : 1), r: 1 + Math.random() * 1.2 });
+    (function loop(t) {
+      if (!c.parentNode || my !== gen) return;
+      requestAnimationFrame(loop);
+      if (t - last < 33) return; last = t;
+      ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#fff';
+      for (var i = 0; i < P.length; i++) {
+        var p = P[i];
+        p.x += p.vx; p.y += p.vy; p.a += p.da;
+        if (p.a >= 1) { p.a = 1; p.da = -p.da; }
+        else if (p.a <= 0) { p.a = 0; p.da = Math.abs(p.da); p.x = Math.random() * w; p.y = Math.random() * h; }
+        ctx.globalAlpha = p.a * .6; ctx.fillRect(p.x, p.y, p.r, p.r);
+      }
+    })(0);
+    c.addEventListener('click', function () { unveil(c); });
+    setTimeout(function () { c.classList.add('on'); }, 50);
+  }
+
+  function start() {
+    var pic, my = ++gen, revealed = false, tmo;
+    var failed = function () { if (my !== gen) return; clearTimeout(tmo); notFound(); };
+    var isGif = GIF_RE.test(MEDIA_URL);
+    if (isGif) {
+      pic = document.createElement('canvas');
+      pic.id = 'pic';
+      box0.insertBefore(pic, shield);
+    } else {
+      pic = document.createElement('img');
+      pic.id = 'pic'; pic.alt = ''; pic.draggable = false; pic.src = MEDIA_URL;
+      box0.insertBefore(pic, shield);
+    }
+
+    function finish() {
+      if (my !== gen) return;
+      box0.classList.remove('loading', 'sizing');
+      box0.classList.add('live');
+      ambientStart(function () { return pic; }, isGif);
+      box0.style.width = box0.style.height = '';
+      pic.style.width = pic.style.height = '';
+      if (isGif && pic.tagName === 'CANVAS') {
+        var real = new Image(), old = pic;
+        real.alt = ''; real.draggable = false; real.className = old.className;
+        real.onload = function () {
+          (real.decode ? real.decode() : Promise.resolve()).then(function () {
+            real.id = 'pic'; old.removeAttribute('id');
+            if (old.parentNode) { box0.insertBefore(real, old); box0.removeChild(old); pic = real; }
+          }, function () {});
+        };
+        real.src = MEDIA_URL;
+      }
+    }
+    function reveal() {
+      if (revealed || my !== gen) return; revealed = true; clearTimeout(tmo);
+      var nw = pic.naturalWidth, nh = pic.naturalHeight;
+      if (!nw || !nh) { pic.classList.add('shown', 'loaded'); box0.classList.add('ready'); box0.parentNode.classList.add('on', 'done'); return finish(); }
+      var fw = box0.closest('.frame').clientWidth || window.innerWidth;
+      var W = Math.min(fw, 460), capH = window.innerHeight * 0.6;
+      // Khung thu nhỏ theo chiều cao màn hình để luôn thấy nút 
+      var w = Math.max(Math.min(264, W), Math.min(W, Math.round(capH * nw / nh)));
+      var h = Math.round(w * nh / nw);                              // đúng tỉ lệ gốc, không viền đen
+      box0.style.setProperty('--mw', w + 'px'); box0.style.setProperty('--mh', h + 'px');
+      pic.style.width = w + 'px'; pic.style.height = h + 'px';
+      box0.classList.add('spoiler'); box0.parentNode.classList.add('spoiled'); makeSpoiler(w, h, my);
+      ambientStart(function () { return pic; }, false, w, h);   // bật vầng sáng ngay lập tức
+      updateDoodle(h);                                          // ảnh ngắn -> nền icon dài hơn
+      box0.style.width = '220px'; box0.style.height = '4px';
+      box0.classList.add('sizing');
+      void box0.offsetWidth;
+      box0.style.width = w + 'px';
+      setTimeout(function () {
+        if (my !== gen) return;
+        box0.classList.remove('loading');
+        box0.parentNode.classList.add('on');
+        pic.classList.add('shown');
+        box0.style.height = h + 'px';
+        setTimeout(function () {
+          if (my !== gen) return;
+          box0.classList.add('ready');
+          box0.parentNode.classList.add('done');
+          pic.classList.add('loaded');
+          setTimeout(finish, 1700);
+        }, 950);
+      }, 450);
+    }
+    if (isGif) {
+      var ld = new Image();
+      ld.onload = function () {
+        pic.width = ld.naturalWidth; pic.height = ld.naturalHeight;
+        pic.getContext('2d').drawImage(ld, 0, 0);
+        pic.naturalWidth = ld.naturalWidth; pic.naturalHeight = ld.naturalHeight;
+        reveal();
+      };
+      ld.onerror = failed;
+      ld.src = MEDIA_URL;
+    } else {
+      var done = function () { if (pic.decode) pic.decode().then(reveal, reveal); else reveal(); };
+      if (pic.complete && pic.naturalWidth) done();
+      else { pic.addEventListener('load', done); pic.addEventListener('error', failed); }
+    }
+    tmo = setTimeout(function () { if (!revealed) failed(); }, 20000);
+  }
+
+  function notFound() {
+    box0.style.transition = 'opacity .35s ease';
+    box0.style.opacity = '0';
+    setTimeout(function () {
+      showToast('Không tìm thấy ảnh');
+      if (MEDIA_URL !== DEFAULT_IMG) load(DEFAULT_IMG);   // sai mã -> hiện ảnh mặc định
+    }, 400);
+  }
+
+  // ---- Nhận mã / link rồi tải media ----
+  // Chấp nhận: "m2VD" | "https://byvn.net/m2VD" | link ảnh/GIF đầy đủ | "thư-mục/tên.đuôi" (supaimg)
+  function load(raw) {
+    raw = (raw || '').trim();
+    if (!raw) return;
+    resetViewer();
+
+    // ImgBB: ibb.co/<id> | ibb/<id> -> trang ảnh; i.ibb.co/<id>/<file> -> link ảnh trực tiếp
+    var mp = raw.match(/^(?:https?:\/\/)?(?:www\.)?ibb\.co\/([A-Za-z0-9]+)/i) || raw.match(/^ibb\/([A-Za-z0-9]+)$/i);
+    if (mp) return loadIbbPage(mp[1]);
+    var md = raw.match(/^(?:https?:\/\/)?i\.ibb\.co\/([A-Za-z0-9]+)\//i);
+    if (md) {
+      MEDIA_URL = /^https?:/i.test(raw) ? raw : 'https://' + raw;
+      if (raw !== DEFAULT_IMG) loadIbbMeta(md[1]);
+      return start();
+    }
+
+    // Link đầy đủ
+    if (/^https?:\/\//i.test(raw)) {
+      var u;
+      try { u = new URL(raw); } catch (e) { return notFound(); }
+      var last = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+      if (/(^|\.)byvn\.net$/i.test(u.hostname) && /^[A-Za-z0-9_-]+$/.test(last)) {
+        return load(last);
+      }
+      MEDIA_URL = raw;
+            return start();
+    }
+    raw = raw.replace(/^\/+|\/+$/g, '');
+
+    // Dạng 'thư-mục/tên-file.đuôi' -> supaimg
+    if (/^[A-Za-z0-9-]+\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(raw)) {
+      MEDIA_URL = 'https://i.supaimg.com/' + raw;
+            return start();
+    }
+
+    if (!/^[A-Za-z0-9_-]+$/.test(raw) || /^index(\.html)?$/i.test(raw)) return notFound();
+
+    // Chỉ có mã -> https://byvn.net/<mã>
+    MEDIA_URL = CDN + raw;
+    start();
+  }
+
+  // ---- Link vẫn dùng được: ?src= , ?id= , /thư-mục/tên.đuôi , /mã. Không có mã -> ảnh mặc định ----
+  (function initial() {
+    var qs = new URLSearchParams(location.search);
+    var src = qs.get('src'), id = qs.get('id');
+    if (src) return load(src);
+    if (id) return load(id);
+    if (location.protocol !== 'file:') {
+      var parts = decodeURIComponent(location.pathname).split('/').filter(Boolean);
+      // GitHub Pages dạng user.github.io/<tên-repo>/ : bỏ tên repo, nó không phải mã ảnh
+      if (/\.github\.io$/i.test(location.hostname)) parts.shift();
+      var path = parts.join('/');
+      if (path && !/^index(\.html)?$/i.test(path)) return load(path);
+    }
+    load(DEFAULT_IMG);
+  })();
+
+  // ---- Toast ----
+  function showToast(msg) {
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+  }
+
+  // ---- Chống sao chép ảnh ----
+  var isField = function (e) { return e.target && e.target.tagName === 'INPUT'; };
+  var block = function (e) { if (isField(e)) return; e.preventDefault(); return false; };
+  ['contextmenu', 'dragstart', 'selectstart', 'copy', 'cut'].forEach(function (ev) {
+    document.addEventListener(ev, block);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (isField(e)) return;
+    var k = (e.key || '').toLowerCase(), c = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' || e.key === 'PrintScreen' ||
+        (c && ['s', 'u', 'p', 'c', 'a'].indexOf(k) > -1) ||
+        (c && e.shiftKey && ['i', 'j', 'c', 's'].indexOf(k) > -1)) {
+      e.preventDefault();
+      if (e.key === 'PrintScreen' && navigator.clipboard) navigator.clipboard.writeText('');
+      return false;
+    }
+  });
+  function hide() { box0.style.filter = 'blur(28px)'; }
+  function show() { box0.style.filter = ''; }
+  document.addEventListener('visibilitychange', function () { document.hidden ? hide() : show(); });
+  window.addEventListener('blur', hide);
+  window.addEventListener('focus', show);
+})();
+</script>
+<script>
+(function () {
+  var bar = document.getElementById('react'), card = bar.parentNode;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  bar.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var was = b.classList.contains('on');
+    var all = bar.querySelectorAll('button');
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
+    if (was) return;                       // bấm lần nữa để bỏ chọn
+    b.classList.add('on');
+    if (reduce) return;
+    var cr = card.getBoundingClientRect(), br = b.getBoundingClientRect();
+    for (var n = 0; n < 3; n++) {
+      var s = document.createElement('span');
+      s.className = 'float-emo'; s.textContent = b.dataset.e;
+      s.style.left = (br.left - cr.left + br.width / 2 - 10 + (Math.random() * 16 - 8)) + 'px';
+      s.style.setProperty('--dx', (Math.random() * 40 - 20) + 'px');
+      s.style.animationDelay = (n * 0.12) + 's';
+      card.appendChild(s);
+      setTimeout(function (el) { return function () { if (el.parentNode) el.parentNode.removeChild(el); }; }(s), 1300);
+    }
+  });
+})();
+</script>
+</body>
+</html>
